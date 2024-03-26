@@ -1,4 +1,4 @@
-from operator import pos
+from operator import ne, pos
 from Bio import SeqIO
 import matplotlib.pyplot as plt
 from numpy import average, mean, negative
@@ -33,7 +33,7 @@ def create_histogram():
         for feature in record.features:
             if feature.type == "gene":
                 gene_lengths.append(feature.location.end - feature.location.start)
-    print_histogram("gene", gene_lengths, ["gene length", "count"])
+    print_histogram("gene_lengths", gene_lengths, ["gene length", "count"])
 
 
 def print_histogram(name: str, values, column_names: List[str]):
@@ -63,25 +63,35 @@ def compare_strands():
         # print(record.seq)
         for feature in record.features:
             if feature.location.strand == -1:
-                negative_strand += 1
                 if feature.type == "CDS":
+                    negative_strand += 1
                     negative_strand_cds += 1
                     cds_negative_lengths.append(
-                        feature.location.end - feature.location.start
+                        len(
+                            record.seq[
+                                feature.location.start : feature.location.end
+                            ].reverse_complement()
+                        )
                     )
-                else:
+                elif feature.type == "gene":
+                    negative_strand += 1
                     non_cds_negative.append(
-                        feature.location.end - feature.location.start
+                        len(
+                            record.seq[
+                                feature.location.start : feature.location.end
+                            ].reverse_complement()
+                        )
                     )
 
             elif feature.location.strand == 1:
-                positive_strand += 1
                 if feature.type == "CDS":
+                    positive_strand += 1
                     positive_strand_cds += 1
                     cds_positive_lengths.append(
                         feature.location.end - feature.location.start
                     )
-                else:
+                elif feature.type == "gene":
+                    positive_strand += 1
                     non_cds_positive.append(
                         feature.location.end - feature.location.start
                     )
@@ -97,19 +107,19 @@ def compare_strands():
         negative_strand_cds,
     )
     # histograms
-    # print_histogram(
-    #     "positive", cds_positive_lengths, ["length", "precentege"]
-    # )  # cds positive histogram.
-    # print_histogram(
-    #     "negative", cds_negative_lengths, ["length", "precentege"]
-    # )  # cds negative histogram.
-    print(non_cds_positive)
+    print_histogram(
+        "positive_cds", cds_positive_lengths, ["length", "precentege"]
+    )  # cds positive histogram.
+    print_histogram(
+        "negative_cds", cds_negative_lengths, ["length", "precentege"]
+    )  # cds negative histogram.
+    # print(non_cds_positive)
     print_histogram(
         "positive_non_cds", non_cds_positive, ["length", "precentege"]
     )  # non cds positive
-    # print_histogram(
-    #     "negative_non_cds", non_cds_negative, ["length", "precentege"]
-    # )  # non cds negative
+    print_histogram(
+        "negative_non_cds", non_cds_negative, ["length", "precentege"]
+    )  # non cds negative
     # this is to print the stats for the cds statitatics.
     print_statistic_table(cds_positive_lengths, cds_negative_lengths)
     # this prints the statistics of non cds genes.
@@ -151,16 +161,33 @@ def get_whole_dna_strand():
         for feature in record.features:
             if feature.type == "CDS":
                 # print(feature.qualifiers)
-                if "locus_tag" in feature.qualifiers:
-                    count = (
-                        count_tc(record[feature.location.start : feature.location.end])
-                        * 100
-                        / (feature.location.end - feature.location.start)
-                    )
+                if "gene" in feature.qualifiers:
+                    count = 0
+                    if feature.location.strand == 1:
+                        count = (
+                            count_tc(
+                                record.seq[
+                                    feature.location.start : feature.location.end
+                                ]
+                            )
+                            * 100
+                            / (feature.location.end - feature.location.start)
+                        )
+
+                    elif feature.location.strand == -1:
+                        count = (
+                            count_tc(
+                                record.seq[
+                                    feature.location.start : feature.location.end
+                                ].reverse_complement()
+                            )
+                            * 100
+                            / (feature.location.end - feature.location.start)
+                        )
 
                     data_to_append = pd.Series(
                         {
-                            "gene": feature.qualifiers["locus_tag"][0],
+                            "gene": feature.qualifiers["gene"][0],
                             "strand": feature.location.strand,
                             "start": feature.location.start,
                             "end": feature.location.end,
@@ -188,6 +215,6 @@ def count_tc(seq_record: str):
 
 
 print(create_type_table())
-# create_histogram()
+create_histogram()
 compare_strands()
 get_whole_dna_strand()

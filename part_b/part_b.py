@@ -23,25 +23,31 @@ def get_whole_dna_strand():
         tc_count_in_record = count_tc(seq_record)
         record_len = len(record)
         for feature in record.features:
-            if feature.type == "CDS":
-                # print(feature.qualifiers)
-                if "gene" in feature.qualifiers:
-                    count = (
-                        count_tc(record[feature.location.start : feature.location.end])
-                        * 100
-                        / (feature.location.end - feature.location.start)
-                    )
+            # print(feature.qualifiers)
+            if "translation" in feature.qualifiers:
+                if feature.type == "CDS":
+                    if "gene" in feature.qualifiers:
+                        count = (
+                            count_tc(
+                                record[feature.location.start : feature.location.end]
+                            )
+                            * 100
+                            / (feature.location.end - feature.location.start)
+                        )
 
-                    data_to_append = pd.Series(
-                        {
-                            "gene": feature.qualifiers["gene"][0],
-                            "strand": feature.location.strand,
-                            "start": feature.location.start,
-                            "end": feature.location.end,
-                            "tc_count": count,
-                        }
-                    )
-                    tc_proteins = pd.concat([tc_proteins, data_to_append.to_frame().T])
+                        data_to_append = pd.Series(
+                            {
+                                "gene": feature.qualifiers["gene"][0],
+                                "strand": feature.location.strand,
+                                "start": feature.location.start,
+                                "end": feature.location.end,
+                                "translation": feature.qualifiers["translation"][0],
+                                "tc_count": count,
+                            }
+                        )
+                        tc_proteins = pd.concat(
+                            [tc_proteins, data_to_append.to_frame().T]
+                        )
         print(tc_proteins)
     print("tc_count_in_record", tc_count_in_record / record_len * 100)
     print("tc_protein", np.mean(tc_proteins["tc_count"]))
@@ -98,22 +104,34 @@ def uniprot_bacillus(path: str):
         print(record.seq)
         records_len.append(len(record.seq))
         pattern = r"GN=([^ ]+)"
-        match = re.search(pattern, record.description)
-        if match:
-            gene_name = match.group(1)  # Extract the gene name from the matched group
-            # print("Gene Name:", gene_name)
-            records.append(gene_name)
-            # else:
-            # print("Gene Name not found.")
+        translation_pattern = r"'translation': \['(.*?)'\]"
+        records.append(record.seq)
+        # Extracting translation using regular expression
+        # translation_match = re.search(translation_pattern, record.description)
+        # print(translation_match)
+        # match = re.search(pattern, record.description)
+        # if translation_match:
+        #     gene_name = translation_match.group(
+        #         1
+        #     )  # Extract the gene name from the matched group
+        #     # print("Gene Name:", gene_name)
+        #     if gene_name not in records:
+        #         records.append(gene_name)
+        #     # records.append(gene_name)
+        #     # else:
+        #     # print("Gene Name not found.")
     print_histogram("records_len", records_len, ["precentege", "count per percentage"])
     # print(records)
+    print_statistic_table_protiens(records_len)
     return records
 
 
 def check_hedrophobic_genes(path: str):
     hydrophobic_count_arr = []
+    lengths = []
     i = 0
     for record in SeqIO.parse(open(path), "fasta"):
+        lengths.append(len(record))
         count = 0
         for aa in record:
             if aa in hydrophobic_aa:
@@ -122,6 +140,13 @@ def check_hedrophobic_genes(path: str):
         i += 1
     print(hydrophobic_count_arr)
     print_statistic_table_protiens(hydrophobic_count_arr)
+    print_histogram(
+        "hydrophobic_protiens_precentege",
+        hydrophobic_count_arr,
+        ["precentege", "count per percentage"],
+    )
+    print_statistic_table_protiens(lengths)
+    print_histogram("hydrophobic_lengths", lengths, ["length", "precentege in length"])
     return hydrophobic_count_arr
 
 
@@ -129,23 +154,37 @@ def compare_ids(uniprot_ids, genbank_ids):
     # genbank_ids["gene"] = genbank_ids["gene"].str[0].str.upper()
     # print(genbank_ids["gene"].isin(uniprot_ids).values)
     # print(genbank_ids)
-    genbank_ids["gene"] = genbank_ids["gene"].mask(
-        genbank_ids["gene"].isin(uniprot_ids)
+    genbank_ids["translation"] = genbank_ids["translation"].mask(
+        genbank_ids["translation"].isin(uniprot_ids)
     )
-    genbank_ids = genbank_ids.dropna(subset=["gene"])
-
+    genbank_ids = genbank_ids.dropna(subset=["translation"])
+    # print_histogram(genbank_ids, "genbank", ["precentege", "count per percentage"])
     print(genbank_ids)
     return genbank_ids
 
 
 ids = get_whole_dna_strand()
-print(ids)
-uniprot_ids = uniprot_bacillus("./uniprotkb_bacillus_clausii_2024_03_13.fasta")
+path = "./uniprotkb_bacillus_clausii_AND_reviewed_2024_03_25.fasta"
+# print(ids)
+uniprot_ids = uniprot_bacillus(path)
 genes_not_in_uniprot = compare_ids(
     uniprot_ids, ids.copy()
-)  # there are less genes in genbank not in uniprot
+)  # there are less genes in genbank not in uniprot_ids
+# print(genes_not_in_uniprot)
+not_in_genbank = []
+for x in uniprot_ids:
+    if x not in ids["translation"].values:
+        not_in_genbank.append(x)
+# print(not_in_genbank)
+# print(len(uniprot_ids))
+# print(len(ids))
+# print(len(genes_not_in_uniprot))
+# print(genes_not_in_uniprot)
+print_statistic_table_protiens(ids["tc_count"].values)
+print_statistic_table_protiens(genes_not_in_uniprot["tc_count"].values)
 
-check_hedrophobic_genes("./uniprotkb_bacillus_clausii_2024_03_13.fasta")
+
+check_hedrophobic_genes("./uniprotkb_bacillus_clausii_AND_proteins_2024_03_25.fasta")
 # print(ids["gene"])
 # uniprot_not_in_genbank = [x for x in uniprot_ids if x not in ids["gene"].values]
 # print(len(uniprot_ids))
