@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 
-def create_type_table():
+def create_type_table(path):
     counts = {}
 
     # bacilus_file = open("./Bacillus clausii.gb")
@@ -15,7 +15,7 @@ def create_type_table():
     # ())
     sequence_count = 0
     # records = SeqIO.parse(bacilus_file, "genbank")
-    for record in SeqIO.parse(open("./Bacillus clausii.gb"), "genbank"):
+    for record in SeqIO.parse(open(path), "genbank"):
         for feature in record.features:
             # print(feature.type)
             if feature.type in counts:
@@ -27,9 +27,9 @@ def create_type_table():
     return counts
 
 
-def create_histogram():
+def create_histogram(path):
     gene_lengths = []
-    for record in SeqIO.parse(open("./Bacillus clausii.gb"), "genbank"):
+    for record in SeqIO.parse(open(path), "genbank"):
         for feature in record.features:
             if feature.type == "gene":
                 gene_lengths.append(feature.location.end - feature.location.start)
@@ -45,12 +45,14 @@ def print_histogram(name: str, values, column_names: List[str]):
     # Add labels and title
     plt.xlabel(column_names[0])
     plt.ylabel(column_names[1])
+    plt.ylim(0, 30)
+    plt.xlim(0, 8500)
     plt.title(name)
     # Show plot
     plt.show()
 
 
-def compare_strands():
+def compare_strands(path):
     positive_strand = 0
     negative_strand = 0
     cds_positive_lengths = []
@@ -59,7 +61,7 @@ def compare_strands():
     non_cds_negative = []
     positive_strand_cds = 0
     negative_strand_cds = 0
-    for record in SeqIO.parse(open("./Bacillus clausii.gb"), "genbank"):
+    for record in SeqIO.parse(open(path), "genbank"):
         # print(record.seq)
         for feature in record.features:
             if feature.location.strand == -1:
@@ -150,11 +152,11 @@ def print_statistic_table(positive, negative):
 
 
 # this function gets the percent of tc per percentage of each gene
-def get_whole_dna_strand():
+def get_whole_dna_strand(path):
     tc_count_in_record = 0
     record_len = 0
     tc_proteins = pd.DataFrame(columns="gene,strand,start,end,tc_count".split(","))
-    for record in SeqIO.parse(open("./Bacillus clausii.gb"), "genbank"):
+    for record in SeqIO.parse(open(path), "genbank"):
         seq_record = record.seq
         tc_count_in_record = count_tc(seq_record)
         record_len = len(record)
@@ -214,7 +216,8 @@ def count_tc(seq_record: str):
     return tc_count_in_record
 
 
-print(create_type_table())
-create_histogram()
-compare_strands()
-get_whole_dna_strand()
+path = "./Bacillus clausii.gb"
+print(create_type_table(path))
+create_histogram(path)
+compare_strands(path)
+get_whole_dna_strand(path)

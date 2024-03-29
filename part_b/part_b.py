@@ -5,20 +5,25 @@ import re
 import matplotlib.pyplot as plt
 from typing import List
 
+# import matplotlib.pyplot as plt
+from matplotlib_venn import venn2
+
 
 hydrophobic_aa = ["A", "V", "L", "I", "M", "F", "W", "P"]
 
 
+# counts the tc in the record.
 def count_tc(seq_record: str):
     tc_count_in_record = seq_record.count("T") + seq_record.count("C")
     return tc_count_in_record
 
 
-def get_whole_dna_strand():
+# compares between the dna strands.
+def get_whole_dna_strand(path):
     tc_count_in_record = 0
     record_len = 0
     tc_proteins = pd.DataFrame(columns="gene,strand,start,end,tc_count".split(","))
-    for record in SeqIO.parse(open("../Bacillus clausii.gb"), "genbank"):
+    for record in SeqIO.parse(open(path), "genbank"):
         seq_record = record.seq
         tc_count_in_record = count_tc(seq_record)
         record_len = len(record)
@@ -62,6 +67,7 @@ def get_whole_dna_strand():
     return tc_proteins
 
 
+# prints the histogram
 def print_histogram(name: str, values, column_names: List[str]):
     plt.hist(
         values,
@@ -76,6 +82,7 @@ def print_histogram(name: str, values, column_names: List[str]):
     plt.show()
 
 
+# prints the statistic table of the list of proteins given.
 def print_statistic_table_protiens(proteins_lengths: List[int]):
     # min max avarage and standart deviasion
     # Create a DataFrame
@@ -106,7 +113,7 @@ def uniprot_bacillus(path: str):
         pattern = r"GN=([^ ]+)"
         translation_pattern = r"'translation': \['(.*?)'\]"
         records.append(record.seq)
-        # Extracting translation using regular expression
+        # Extracting translation using regular expression of the gene name.
         # translation_match = re.search(translation_pattern, record.description)
         # print(translation_match)
         # match = re.search(pattern, record.description)
@@ -126,6 +133,7 @@ def uniprot_bacillus(path: str):
     return records
 
 
+# checks the number of hydrophobic genes in the given file in the path
 def check_hedrophobic_genes(path: str):
     hydrophobic_count_arr = []
     lengths = []
@@ -163,28 +171,30 @@ def compare_ids(uniprot_ids, genbank_ids):
     return genbank_ids
 
 
-ids = get_whole_dna_strand()
+ids = get_whole_dna_strand("../Bacillus clausii.gb")
 path = "./uniprotkb_bacillus_clausii_AND_reviewed_2024_03_25.fasta"
 # print(ids)
 uniprot_ids = uniprot_bacillus(path)
 genes_not_in_uniprot = compare_ids(
     uniprot_ids, ids.copy()
 )  # there are less genes in genbank not in uniprot_ids
-# print(genes_not_in_uniprot)
 not_in_genbank = []
 for x in uniprot_ids:
     if x not in ids["translation"].values:
         not_in_genbank.append(x)
-# print(not_in_genbank)
-# print(len(uniprot_ids))
-# print(len(ids))
-# print(len(genes_not_in_uniprot))
-# print(genes_not_in_uniprot)
 print_statistic_table_protiens(ids["tc_count"].values)
 print_statistic_table_protiens(genes_not_in_uniprot["tc_count"].values)
+venn2(
+    (
+        len(genes_not_in_uniprot),
+        len(uniprot_ids) - (len(ids) - len(genes_not_in_uniprot)),
+        len(ids) - len(genes_not_in_uniprot),
+    ),
+    ("Genbank", "Uniprot"),
+)
+plt.show()
 
-
-check_hedrophobic_genes("./uniprotkb_bacillus_clausii_AND_proteins_2024_03_25.fasta")
+# check_hedrophobic_genes("./uniprotkb_bacillus_clausii_AND_proteins_2024_03_25.fasta")
 # print(ids["gene"])
 # uniprot_not_in_genbank = [x for x in uniprot_ids if x not in ids["gene"].values]
 # print(len(uniprot_ids))
