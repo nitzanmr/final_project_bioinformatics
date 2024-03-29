@@ -205,9 +205,11 @@ def get_whole_dna_strand(path):
         "tc_proteins", tc_proteins["tc_count"], ["precentege", "count per percentage"]
     )  # cds positive histogram."tc_proteins)
     # Sort genes by average values while keeping track of original indices
-    sorted_tc_proteins = pd.DataFrame(tc_proteins).sort_values(by="tc_count")
-    print(sorted_tc_proteins[-6:-1])
-    print(sorted_tc_proteins[:5])
+    # sorted_tc_proteins = pd.DataFrame(tc_proteins).sort_values(by="tc_count")
+    # print(sorted_tc_proteins[-6:-1])
+    # print(sorted_tc_proteins[:5])
+    # sorted_tc_proteins = tc_proteins.sort_values(by="start")
+    # sorted_tc_proteins.to_csv("part_a.csv", ",")
     return tc_proteins
 
 
